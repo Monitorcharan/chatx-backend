@@ -59,6 +59,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/conversations', require('./routes/conversations'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/status', require('./routes/status'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
