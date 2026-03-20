@@ -70,4 +70,21 @@ router.get('/search', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/users/token
+// @desc    Update FCM Token for push notifications
+router.post('/token', auth, async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ detail: 'FCM Token is required' });
+    }
+
+    await User.findByIdAndUpdate(req.user.userId, { fcmToken });
+    res.json({ message: 'FCM Token updated' });
+  } catch (error) {
+    console.error('Update FCM Token error:', error);
+    res.status(500).json({ detail: 'Server error' });
+  }
+});
+
 module.exports = router;

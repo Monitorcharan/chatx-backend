@@ -143,6 +143,26 @@ module.exports = (io) => {
             messageId: message._id,
             conversationId: conversation._id,
           });
+        } else {
+          // RECEIVER IS OFFLINE - SEND PUSH NOTIFICATION
+          try {
+            const { sendNotification } = require('../services/notificationService');
+            const receiver = await User.findById(receiverId);
+            if (receiver && receiver.fcmToken) {
+              const sender = await User.findById(senderId);
+              await sendNotification(receiver.fcmToken, {
+                title: sender ? sender.displayName : 'New Message',
+                body: messageType === 'text' ? content : `Sent a ${messageType}`,
+                data: {
+                  type: 'chat',
+                  senderId: senderId,
+                  conversationId: conversation._id.toString(),
+                }
+              });
+            }
+          } catch (notifErr) {
+            console.error('Failed to send push notification:', notifErr);
+          }
         }
       } catch (error) {
         console.error('Error handling private message:', error);
@@ -201,6 +221,25 @@ module.exports = (io) => {
         offer,
         isVideoString,
       });
+
+      // PUSH NOTIFICATION FOR CALL
+      try {
+        const receiver = await User.findById(receiverId);
+        if (receiver && receiver.fcmToken) {
+          const { sendNotification } = require('../services/notificationService');
+          await sendNotification(receiver.fcmToken, {
+            title: `Incoming ${isVideoString === 'true' ? 'Video' : 'Voice'} Call`,
+            body: `${caller?.displayName || 'Someone'} is calling you`,
+            data: {
+              type: 'call',
+              callerId: callerId,
+              isVideo: isVideoString,
+            }
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to send call push notification:', notifErr);
+      }
     });
 
     // 2. Call Answer
