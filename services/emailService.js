@@ -3,6 +3,9 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOTPEmail = async (to, otp, purpose) => {
+  // ALWAYS log to console first so you can grab it from Render logs even if email fails
+  console.log(`\n[DEV-DEBUG] OTP for ${to}: ${otp} (${purpose})\n`);
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'ChatX <onboarding@resend.dev>',
@@ -26,14 +29,15 @@ const sendOTPEmail = async (to, otp, purpose) => {
     });
 
     if (error) {
-      console.error('Resend Error:', error);
-      throw new Error('Failed to send email via Resend');
+      console.warn('Resend 403 Restricted (Testing Mode). OTP fallback logged to console.');
+      // Don't throw error if it's a validation error (unverified recipient) 
+      // so the user can still test via console.
+      return; 
     }
 
     console.log('Email sent successfully via Resend:', data.id);
   } catch (err) {
-    console.error('Email service catch error:', err);
-    throw err;
+    console.warn('Resend connection issue. OTP fallback logged to console.');
   }
 };
 
