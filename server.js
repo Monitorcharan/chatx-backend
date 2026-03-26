@@ -34,8 +34,9 @@ app.use(express.json());
 
 // Netlify serverless routing fix
 app.use((req, res, next) => {
-  if (req.url.startsWith('/.netlify/functions/api')) {
-    req.url = req.url.replace('/.netlify/functions/api', '/api');
+  const apiIndex = req.url.indexOf('/api');
+  if (apiIndex !== -1) {
+    req.url = req.url.substring(apiIndex);
   }
   next();
 });
