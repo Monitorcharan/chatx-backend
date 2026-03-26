@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
+const serverless = require('serverless-http');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -76,6 +77,11 @@ app.use((err, req, res, next) => {
 require('./sockets/chat')(io);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
+module.exports.handler = serverless(app);
