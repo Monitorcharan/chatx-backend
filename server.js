@@ -74,7 +74,12 @@ app.use('/api/ai', require('./routes/ai'));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use((req, res) => {
-  res.status(404).json({ detail: 'Route not found' });
+  res.status(404).json({ 
+    detail: 'Route not found', 
+    path: req.url,
+    originalUrl: req.originalUrl,
+    method: req.method
+  });
 });
 
 app.use((err, req, res, next) => {
