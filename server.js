@@ -71,7 +71,7 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/status', require('./routes/status')(io));
 app.use('/api/ai', require('./routes/ai'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use((req, res) => {
   res.status(404).json({ detail: 'Route not found' });
