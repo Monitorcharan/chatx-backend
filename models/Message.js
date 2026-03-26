@@ -32,6 +32,18 @@ const messageSchema = new mongoose.Schema({
     default: 'sent',
   },
   mediaUrl: String,
+  reactions: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: String
+  }],
+  isSelfDestruct: {
+    type: Boolean,
+    default: false,
+  },
+  expiresAt: {
+    type: Date,
+    index: { expireAfterSeconds: 0 }
+  },
 }, { timestamps: true });
 
 // Compound index for efficient message queries

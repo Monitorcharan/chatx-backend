@@ -13,10 +13,10 @@ const conversationSchema = new mongoose.Schema({
     messageType: { type: String, default: 'text' },
   },
   unreadCounts: {
-    type: Map,
     of: Number,
     default: {},
   },
+  wallpaperUrl: { type: String, default: null },
 }, { timestamps: true });
 
 // Index for fast lookup of user's conversations

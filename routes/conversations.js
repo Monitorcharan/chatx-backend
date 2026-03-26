@@ -29,6 +29,7 @@ router.get('/', auth, async (req, res) => {
         lastMessage: conv.lastMessage,
         unreadCount: conv.unreadCounts?.get(userId) || 0,
         updatedAt: conv.updatedAt,
+        wallpaperUrl: conv.wallpaperUrl,
       };
     });
 
@@ -78,6 +79,7 @@ router.post('/', auth, async (req, res) => {
         lastMessage: conversation.lastMessage,
         unreadCount: conversation.unreadCounts?.get(userId) || 0,
         updatedAt: conversation.updatedAt,
+        wallpaperUrl: conversation.wallpaperUrl,
         existing: true,
       });
     }
@@ -110,10 +112,33 @@ router.post('/', auth, async (req, res) => {
       lastMessage: conversation.lastMessage,
       unreadCount: 0,
       updatedAt: conversation.updatedAt,
+      wallpaperUrl: conversation.wallpaperUrl,
       existing: false,
     });
   } catch (error) {
     console.error('Create conversation error:', error);
+    res.status(500).json({ detail: 'Server error' });
+  }
+});
+
+// @route   PUT /api/conversations/:id/wallpaper
+// @desc    Update conversation wallpaper
+router.put('/:id/wallpaper', auth, async (req, res) => {
+  try {
+    const { wallpaperUrl } = req.body;
+    const conversation = await Conversation.findOneAndUpdate(
+      { _id: req.params.id, participants: req.user.userId },
+      { wallpaperUrl },
+      { new: true }
+    );
+
+    if (!conversation) {
+      return res.status(404).json({ detail: 'Conversation not found' });
+    }
+
+    res.json(conversation);
+  } catch (error) {
+    console.error('Update wallpaper error:', error);
     res.status(500).json({ detail: 'Server error' });
   }
 });

@@ -72,6 +72,8 @@ module.exports = (io) => {
       conversationId,
       content,
       messageType = 'text',
+      isSelfDestruct = false,
+      expiresAt = null,
     }) => {
       try {
         // Find or validate conversation
@@ -104,6 +106,8 @@ module.exports = (io) => {
           content,
           messageType,
           status: 'sent',
+          isSelfDestruct,
+          expiresAt,
         });
         await message.save();
 
@@ -177,6 +181,38 @@ module.exports = (io) => {
         conversationId,
         isTyping,
       });
+    });
+
+    // Handle message reactions
+    socket.on('message reaction', async ({ messageId, userId, emoji, conversationId, contactId }) => {
+      try {
+        const message = await Message.findById(messageId);
+        if (!message) return;
+
+        // Check if user already reacted
+        const existingReactionIndex = message.reactions.findIndex(r => r.userId.toString() === userId);
+        
+        if (existingReactionIndex > -1) {
+          if (message.reactions[existingReactionIndex].emoji === emoji) {
+             // Remove reaction if same emoji (toggle)
+             message.reactions.splice(existingReactionIndex, 1);
+          } else {
+             // Update emoji
+             message.reactions[existingReactionIndex].emoji = emoji;
+          }
+        } else {
+          // Add new reaction
+          message.reactions.push({ userId, emoji });
+        }
+
+        await message.save();
+
+        // Notify both parties
+        io.to(userId).emit('message reaction', { messageId, reactions: message.reactions, conversationId });
+        io.to(contactId).emit('message reaction', { messageId, reactions: message.reactions, conversationId });
+      } catch (error) {
+        console.error('Reaction Error:', error);
+      }
     });
 
     // Handle read receipts
