@@ -32,6 +32,14 @@ const path = require('path');
 app.use(cors());
 app.use(express.json());
 
+// Netlify serverless routing fix
+app.use((req, res, next) => {
+  if (req.url.startsWith('/.netlify/functions/api')) {
+    req.url = req.url.replace('/.netlify/functions/api', '/api');
+  }
+  next();
+});
+
 // Serve static files (like uploaded images)
 app.use(express.static(path.join(__dirname, 'public')));
 
