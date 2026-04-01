@@ -4,7 +4,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
-const serverless = require('serverless-http');
 
 dotenv.config({ path: __dirname + '/.env' });
 
@@ -32,14 +31,6 @@ const path = require('path');
 app.use(cors());
 app.use(express.json());
 
-// Netlify serverless routing fix
-app.use((req, res, next) => {
-  const apiIndex = req.url.indexOf('/api');
-  if (apiIndex !== -1) {
-    req.url = req.url.substring(apiIndex);
-  }
-  next();
-});
 
 // Serve static files (like uploaded images)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -75,12 +66,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use((req, res) => {
-  res.status(404).json({ 
-    detail: 'Route not found', 
-    path: req.url,
-    originalUrl: req.originalUrl,
-    method: req.method
-  });
+  res.status(404).json({ detail: 'Route not found' });
 });
 
 app.use((err, req, res, next) => {
@@ -91,11 +77,9 @@ app.use((err, req, res, next) => {
 require('./sockets/chat')(io);
 
 const PORT = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== 'production') {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 module.exports = app;
-module.exports.handler = serverless(app);
