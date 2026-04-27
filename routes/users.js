@@ -87,4 +87,31 @@ router.post('/token', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/users/persona
+// @desc    Get user's AI persona
+router.get('/persona', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select('aiPersona');
+    res.json({ persona: user?.aiPersona || 'friendly' });
+  } catch (error) {
+    console.error('Get persona error:', error);
+    res.status(500).json({ detail: 'Server error' });
+  }
+});
+
+// @route   POST /api/users/persona
+// @desc    Update user's AI persona
+router.post('/persona', auth, async (req, res) => {
+  try {
+    const { persona } = req.body;
+    if (!persona) return res.status(400).json({ detail: 'Persona is required' });
+    
+    await User.findByIdAndUpdate(req.user.userId, { aiPersona: persona });
+    res.json({ message: 'AI Persona updated', persona });
+  } catch (error) {
+    console.error('Update persona error:', error);
+    res.status(500).json({ detail: 'Server error' });
+  }
+});
+
 module.exports = router;

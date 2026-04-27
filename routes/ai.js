@@ -56,4 +56,22 @@ router.post('/transcribe', auth, async (req, res) => {
   }
 });
 
+/**
+ * @route   POST api/ai/summarize
+ * @desc    Summarize chat conversation
+ * @access  Private
+ */
+router.post('/summarize', auth, async (req, res) => {
+  try {
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "Messages array is required" });
+    }
+    const summary = await aiService.summarizeChat(messages);
+    res.json({ summary });
+  } catch (err) {
+    res.status(500).json({ error: "Summarization failed" });
+  }
+});
+
 module.exports = router;

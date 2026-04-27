@@ -63,6 +63,15 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/status', require('./routes/status')(io));
 app.use('/api/ai', require('./routes/ai'));
 
+app.get('/api/app-version', (req, res) => {
+  res.json({
+    latest_version: '1.0.0+1',
+    download_url: 'https://github.com/charan-ch/chatx/releases/latest',
+    force_update: false,
+    release_notes: 'Initial Magic UI release with High-Fidelity restoration.'
+  });
+});
+
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use((req, res) => {
@@ -80,6 +89,12 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Start Periodic Media Cleanup (Every 2 hours)
+  const { cleanupExpiredStatuses } = require('./services/cleanupService');
+  setInterval(() => {
+    cleanupExpiredStatuses().catch(err => console.error('Cleanup Job Error:', err));
+  }, 2 * 60 * 60 * 1000); // 2 hours
 });
 
 module.exports = app;

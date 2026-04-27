@@ -37,6 +37,8 @@ const sendNotification = async (token, payload) => {
   if (!admin.apps.length) return;
 
   try {
+    const isCall = payload.data && payload.data.type === 'call';
+    
     const message = {
       token: token,
       notification: {
@@ -48,7 +50,21 @@ const sendNotification = async (token, payload) => {
         priority: 'high',
         notification: {
           sound: 'default',
-          channelId: 'chat_messages',
+          channelId: isCall ? 'calls' : 'chat_messages',
+          tag: isCall ? 'incoming_call' : undefined,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            contentAvailable: true,
+            mutableContent: true,
+            sound: 'default',
+            category: isCall ? 'CALL_CATEGORY' : undefined,
+          },
+        },
+        headers: {
+          'apns-priority': '10', // High priority
         },
       },
     };

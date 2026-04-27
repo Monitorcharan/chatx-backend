@@ -17,6 +17,8 @@ module.exports = (io) => {
       // Track socket mapping
       if (!userSockets.has(userId)) {
         userSockets.set(userId, new Set());
+      } else {
+        console.warn(`⚠️ [Socket] User ${userId} is joining with a SECOND socket. Total: ${userSockets.get(userId).size + 1}`);
       }
       userSockets.get(userId).add(socket.id);
 
@@ -72,6 +74,7 @@ module.exports = (io) => {
       conversationId,
       content,
       messageType = 'text',
+      mediaUrl = null,
       isSelfDestruct = false,
       expiresAt = null,
     }) => {
@@ -105,6 +108,7 @@ module.exports = (io) => {
           receiver: receiverId,
           content,
           messageType,
+          mediaUrl,
           status: 'sent',
           isSelfDestruct,
           expiresAt,
@@ -174,6 +178,20 @@ module.exports = (io) => {
       }
     });
 
+    // ==================== PRESENCE & TYPING ====================
+    
+    // Handle in chat (Presence for Aura Flare)
+    socket.on('in chat', ({ userId, conversationId, receiverId }) => {
+      console.log(`👁️ [Presence] User ${userId} is in chat ${conversationId}`);
+      io.to(receiverId).emit('user in chat', { userId, conversationId });
+    });
+
+    // Handle left chat
+    socket.on('left chat', ({ userId, conversationId, receiverId }) => {
+      console.log(`👋 [Presence] User ${userId} left chat ${conversationId}`);
+      io.to(receiverId).emit('user left chat', { userId, conversationId });
+    });
+
     // Handle typing indicator
     socket.on('typing', ({ senderId, receiverId, conversationId, isTyping }) => {
       io.to(receiverId).emit('typing', {
@@ -215,6 +233,21 @@ module.exports = (io) => {
       }
     });
 
+    // Message Delivered Ack (New)
+    socket.on('message delivered', async ({ messageId, senderId, conversationId }) => {
+      try {
+        console.log(`📦 [Status] Message ${messageId} delivered to recipient`);
+        // Update DB status
+        const Message = require('../models/Message');
+        await Message.findByIdAndUpdate(messageId, { status: 'delivered' });
+        
+        // Notify Sender
+        io.to(senderId).emit('message delivered', { messageId, conversationId });
+      } catch (err) {
+        console.error('❌ [Status] Error in message delivered ack:', err);
+      }
+    });
+
     // Handle read receipts
     socket.on('messages read', async ({ userId, conversationId, contactId }) => {
       try {
@@ -248,33 +281,43 @@ module.exports = (io) => {
 
     // 1. Call Offer
     socket.on('call offer', async ({ callerId, receiverId, offer, isVideoString }) => {
-      console.log(`Call offer from ${callerId} to ${receiverId}`);
-      const caller = await User.findById(callerId).select('displayName avatar');
-      io.to(receiverId).emit('call offer', {
-        callerId,
-        callerName: caller?.displayName || 'Unknown',
-        callerAvatar: caller?.avatar,
-        offer,
-        isVideoString,
-      });
-
-      // PUSH NOTIFICATION FOR CALL
       try {
+        console.log(`📞 [Signaling] Call offer from ${callerId} to ${receiverId}`);
+        
+        // Fetch caller details for signaling & notification
+        const caller = await User.findById(callerId).select('displayName avatar');
+        if (!caller) console.warn(`⚠️ [Signaling] Caller ${callerId} not found in DB`);
+
+        const callerName = caller?.displayName || 'Someone';
+        const callerAvatar = caller?.avatar || '';
+
+        // Signaling to online user
+        io.to(receiverId).emit('call offer', {
+          callerId,
+          callerName,
+          callerAvatar,
+          offer,
+          isVideoString,
+        });
+
+        // PUSH NOTIFICATION FOR CALL (If offline or background)
         const receiver = await User.findById(receiverId);
         if (receiver && receiver.fcmToken) {
           const { sendNotification } = require('../services/notificationService');
           await sendNotification(receiver.fcmToken, {
             title: `Incoming ${isVideoString === 'true' ? 'Video' : 'Voice'} Call`,
-            body: `${caller?.displayName || 'Someone'} is calling you`,
+            body: `${callerName} is calling you`,
             data: {
               type: 'call',
               callerId: callerId,
+              callerName: callerName,
+              callerAvatar: callerAvatar,
               isVideo: isVideoString,
             }
           });
         }
-      } catch (notifErr) {
-        console.error('Failed to send call push notification:', notifErr);
+      } catch (error) {
+        console.error('❌ [Signaling] Call Offer Error:', error);
       }
     });
 
@@ -289,7 +332,6 @@ module.exports = (io) => {
 
     // 3. ICE Candidates
     socket.on('ice candidate', ({ senderId, targetId, candidate }) => {
-      console.log(`📡 [WebRTC] Signal: 'ice candidate' from ${senderId} to ${targetId}`);
       io.to(targetId).emit('ice candidate', {
         senderId,
         candidate,
@@ -298,19 +340,19 @@ module.exports = (io) => {
 
     // 4. End Call
     socket.on('end call', ({ senderId, targetId }) => {
-      console.log(`📡 [WebRTC] Signal: 'end call' by ${senderId} for ${targetId}`);
+      console.log(`🤙 [Signaling] End call from ${senderId} to ${targetId}`);
       io.to(targetId).emit('end call', { senderId });
     });
 
     // 5. Reject Call
-    socket.on('call rejected', ({ receiverId, callerId }) => {
-      console.log(`Call rejected by ${receiverId} for ${callerId}`);
+    socket.on('call rejected', ({ callerId, receiverId }) => {
+      console.log(`🚫 [Signaling] Call rejected by ${receiverId} (to ${callerId})`);
       io.to(callerId).emit('call rejected', { receiverId });
     });
 
     // 6. Cancel Call (Caller cancels before answer)
     socket.on('call cancel', ({ callerId, receiverId }) => {
-      console.log(`Call cancelled by ${callerId} for ${receiverId}`);
+      console.log(`🛑 [Signaling] Call canceled by ${callerId} (to ${receiverId})`);
       io.to(receiverId).emit('call cancel', { callerId });
     });
 

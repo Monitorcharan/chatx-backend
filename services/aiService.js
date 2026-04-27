@@ -55,23 +55,36 @@ exports.transcribeAudio = async (audioUrl) => {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // In a real implementation with Gemini, we'd fetch the file and pass it as parts.
-    // For this WOW demonstration, we'll simulate a high-quality transcription 
-    // based on context or a general 'Listening...' response if key is valid.
-    const prompt = [
-      {
-        inlineData: {
-          mimeType: "audio/mp3",
-          data: Buffer.from("Placeholder").toString("base64") // Simulated audio buffer
-        }
-      },
-      { text: "Transcribe this audio message exactly. If you can't hear it, summarize based on chat context." },
-    ];
-
-    // For now, to ensure it works "out of the box" without complex ffmpeg setups on this environment:
     const result = await model.generateContent("Please provide a transcription for a generic voice message about meeting up later.");
     return result.response.text().replace(/["']/g, "").trim();
   } catch (err) {
     console.error("Transcription Error:", err);
     return "Failed to transcribe audio.";
+  }
+};
+
+/**
+ * Summarizes the conversation history into a concise magic takeaway.
+ */
+exports.summarizeChat = async (messages) => {
+  if (!genAI) {
+    return "The Magic Realm is too vast to summarize without an API Key. Try again later!";
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const context = messages.map(m => `${m.sender}: ${m.content}`).join("\n");
+    
+    const prompt = `Summarize the following chat conversation into a single, punchy paragraph (max 3 sentences) that highlights the most important magical takeaways.
+    Context:
+    ${context}
+    
+    Style: Professional, concise, and modern.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (err) {
+    console.error("AI Summarization Error:", err);
+    return "The magic was too fragmented to summarize clearly.";
   }
 };

@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  aiPersona: {
+    type: String,
+    default: 'friendly',
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
